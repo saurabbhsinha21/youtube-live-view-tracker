@@ -10,33 +10,31 @@
 <body>
   <div class="container">
     <h1>YouTube Live View Tracker</h1>
-
     <label>Video ID:
-      <input type="text" id="videoId" value="KQF1gI7nLaU" />
+      <input type="text" id="videoId" value="KQF1gI7nLaU"/>
     </label>
-
     <label>Target Views:
-      <input type="number" id="targetViews" value="17600000" />
+      <input type="number" id="targetViews" value="17800000"/>
     </label>
-
     <label>Target Time (minutes from now):
-      <input type="number" id="targetTime" value="15" />
+      <input type="number" id="targetTime" value="15"/>
     </label>
-
     <button onclick="startTracking()">Start Tracking</button>
 
-    <h2>Live Stats</h2>
-    <p>Live View Count: <span id="liveViewCount">-</span></p>
-    <p>Last 1 min Views: <span id="last1min">-</span></p>
-    <p>Last 5 min Views: <span id="last5min">-</span></p>
-    <p>Views/min Required: <span id="requiredRate">-</span></p>
-    <p>Views Required in next 5 min: <span id="requiredIn5">-</span></p>
-    <p>Projected Views: <span id="projectedViews">-</span></p>
-    <p>Forecast: <span id="forecastResult">Calculating...</span></p>
+    <div class="stats">
+      <h2>Live Stats</h2>
+      <p>Live View Count: <span id="liveViews">-</span></p>
+      <p>Last 1 min Views: <span id="last1min">-</span></p>
+      <p>Last 5 min Views: <span id="last5min">-</span></p>
+      <p>Views/min Required: <span id="requiredRate">-</span></p>
+      <p>Views Required in next 5 min: <span id="requiredIn5">-</span></p>
+      <p>Projected Views: <span id="projected">-</span></p>
+      <p>Forecast: <span id="forecast">Calculating...</span></p>
+    </div>
 
-    <canvas id="viewChart" width="400" height="200"></canvas>
+    <canvas id="viewChart" height="100"></canvas>
   </div>
 
-  <script src="script.jss"></script>
+  <script src="script.js"></script>
 </body>
 </html>

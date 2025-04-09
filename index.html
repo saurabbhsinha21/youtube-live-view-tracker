@@ -1,25 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>YouTube Live View Tracker</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <h1>YouTube Live View Tracker</h1>
+  <div class="container">
+    <h1>YouTube Live View Tracker</h1>
 
-  <label>Video ID: <input type="text" id="videoId"></label><br>
-  <label>Target Views: <input type="number" id="targetViews"></label><br>
-  <label>Target Time (minutes from now): <input type="number" id="targetTime"></label><br>
-  <button onclick="startTracking()">Start Tracking</button>
+    <label>Video ID:
+      <input type="text" id="videoId" value="KQF1gI7nLaU" />
+    </label>
 
-  <h2>Live Stats</h2>
-  <p>Live View Count: <span id="liveCount">-</span></p>
-  <p>Last 1 min Views: <span id="views1min">-</span></p>
-  <p>Last 5 min Views: <span id="views5min">-</span></p>
-  <p>Views/min Required: <span id="viewsPerMin">-</span></p>
-  <p>Views Required in next 5 min: <span id="viewsIn5min">-</span></p>
+    <label>Target Views:
+      <input type="number" id="targetViews" value="17600000" />
+    </label>
 
-  <script src="script.js"></script>
+    <label>Target Time (minutes from now):
+      <input type="number" id="targetTime" value="15" />
+    </label>
+
+    <button onclick="startTracking()">Start Tracking</button>
+
+    <h2>Live Stats</h2>
+    <p>Live View Count: <span id="liveViewCount">-</span></p>
+    <p>Last 1 min Views: <span id="last1min">-</span></p>
+    <p>Last 5 min Views: <span id="last5min">-</span></p>
+    <p>Views/min Required: <span id="requiredRate">-</span></p>
+    <p>Views Required in next 5 min: <span id="requiredIn5">-</span></p>
+    <p>Projected Views: <span id="projectedViews">-</span></p>
+    <p>Forecast: <span id="forecastResult">Calculating...</span></p>
+
+    <canvas id="viewChart" width="400" height="200"></canvas>
+  </div>
+
+  <script src="script.jss"></script>
 </body>
 </html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube Live View Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>YouTube Live View Tracker</h1>
+
+  <label>Video ID: <input type="text" id="videoId"></label><br>
+  <label>Target Views: <input type="number" id="targetViews"></label><br>
+  <label>Target Time (minutes from now): <input type="number" id="targetTime"></label><br>
+  <button onclick="startTracking()">Start Tracking</button>
+
+  <h2>Live Stats</h2>
+  <p>Live View Count: <span id="liveCount">-</span></p>
+  <p>Last 1 min Views: <span id="views1min">-</span></p>
+  <p>Last 5 min Views: <span id="views5min">-</span></p>
+  <p>Views/min Required: <span id="viewsPerMin">-</span></p>
+  <p>Views Required in next 5 min: <span id="viewsIn5min">-</span></p>
+
+  <script src="script.js"></script>
+</body>
+</html>

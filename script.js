@@ -1,116 +1,104 @@
+const apiKey = "AIzaSyCo5NvQZpziJdaCsOjf1H2Rq-1YeiU9Uq8";
+
 let viewHistory = [];
 let chart;
 let interval;
-
-const apiKey = "AIzaSyCo5NvQZpziJdaCsOjf1H2Rq-1YeiU9Uq8"; // Replace with your actual key
+let startTime, targetTime, targetViews;
 
 function startTracking() {
   const videoId = document.getElementById("videoId").value;
+  targetViews = parseInt(document.getElementById("targetViews").value);
+  const time = parseInt(document.getElementById("targetTime").value);
+  targetTime = Date.now() + time * 60000;
+  startTime = Date.now();
+  viewHistory = [];
+
   if (interval) clearInterval(interval);
-  initChart();
-  interval = setInterval(() => fetchViews(videoId), 60000); // every minute
-  fetchViews(videoId); // initial fetch
+  fetchAndUpdate(videoId);
+  interval = setInterval(() => fetchAndUpdate(videoId), 60000); // every minute
 }
 
-function fetchViews(videoId) {
-  const apiURL = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${apiKey}`;
-  fetch(apiURL)
-    .then(res => res.json())
-    .then(data => {
-      const liveViewCount = parseInt(data.items[0].statistics.viewCount);
-      const now = Date.now();
+async function fetchAndUpdate(videoId) {
+  try {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${apiKey}`);
+    const data = await res.json();
+    const viewCount = parseInt(data.items[0].statistics.viewCount);
+    const timestamp = Date.now();
 
-      viewHistory.push({ time: now, views: liveViewCount });
-      if (viewHistory.length > 1000) viewHistory.shift();
+    viewHistory.push({ timestamp, viewCount });
 
-      updateStats(liveViewCount);
-      updateChart();
-    })
-    .catch(err => console.error("YouTube API Error:", err));
+    updateStats(viewCount);
+    updateChart();
+  } catch (e) {
+    console.error("API error:", e);
+  }
 }
 
 function updateStats(currentViews) {
-  document.getElementById("liveViewCount").innerText = currentViews;
+  document.getElementById("liveViews").textContent = currentViews;
 
-  const views1min = getViewsInTimeRange(1);
-  const views5min = getViewsInTimeRange(5);
+  const len = viewHistory.length;
+  const now = Date.now();
 
-  document.getElementById("last1min").innerText = views1min;
-  document.getElementById("last5min").innerText = views5min;
+  let last1min = 0;
+  let last5min = 0;
 
-  const targetViews = parseInt(document.getElementById("targetViews").value);
-  const targetTime = parseInt(document.getElementById("targetTime").value);
-  const viewsRemaining = targetViews - currentViews;
-  const rateRequired = viewsRemaining / targetTime;
-  const requiredIn5 = rateRequired * 5;
-
-  document.getElementById("requiredRate").innerText = rateRequired.toFixed(2);
-  document.getElementById("requiredIn5").innerText = Math.ceil(requiredIn5);
-
-  calculateForecast(currentViews, targetViews, targetTime);
-}
-
-function getViewsInTimeRange(minutes) {
-  const cutoff = Date.now() - minutes * 60000;
-  const recent = viewHistory.filter(v => v.time >= cutoff);
-  if (recent.length < 2) return 0;
-  return recent[recent.length - 1].views - recent[0].views;
-}
-
-function calculateForecast(currentViews, targetViews, targetTime) {
-  if (viewHistory.length < 2) {
-    document.getElementById("forecastResult").innerText = "Not enough data";
-    return;
+  for (let i = len - 1; i >= 0; i--) {
+    const delta = now - viewHistory[i].timestamp;
+    const diff = currentViews - viewHistory[i].viewCount;
+    if (delta <= 60000) last1min = diff;
+    if (delta <= 300000) last5min = diff;
   }
 
-  const first = viewHistory[0];
-  const last = viewHistory[viewHistory.length - 1];
-  const totalTimeMinutes = (last.time - first.time) / 60000;
-  const totalViews = last.views - first.views;
-  const rate = totalViews / totalTimeMinutes;
-  const projectedViews = currentViews + (rate * targetTime);
+  const minutesLeft = (targetTime - now) / 60000;
+  const requiredPerMin = (targetViews - currentViews) / minutesLeft;
+  const requiredIn5min = Math.ceil(requiredPerMin * 5);
+  const elapsedMin = (now - startTime) / 60000;
+  const avgRate = (currentViews - viewHistory[0].viewCount) / elapsedMin;
+  const projected = Math.round(currentViews + avgRate * minutesLeft);
 
-  document.getElementById("projectedViews").innerText = Math.floor(projectedViews);
-  document.getElementById("forecastResult").innerText = projectedViews >= targetViews ? "Yes" : "No";
-}
+  document.getElementById("last1min").textContent = last1min;
+  document.getElementById("last5min").textContent = last5min;
+  document.getElementById("requiredRate").textContent = requiredPerMin.toFixed(2);
+  document.getElementById("requiredIn5").textContent = requiredIn5min;
+  document.getElementById("projected").textContent = projected;
 
-// Chart.js setup
-function initChart() {
-  const ctx = document.getElementById("viewChart").getContext("2d");
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-        label: 'Live Views',
-        data: [],
-        fill: false,
-        borderColor: 'blue',
-        tension: 0.2
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: {
-          type: 'time',
-          time: { unit: 'minute' },
-          title: { display: true, text: 'Time' }
-        },
-        y: {
-          beginAtZero: false,
-          title: { display: true, text: 'Views' }
-        }
-      }
-    }
-  });
+  const forecast = projected >= targetViews ? "Yes" : "No";
+  document.getElementById("forecast").textContent = forecast;
 }
 
 function updateChart() {
-  if (!chart) return;
-  const labels = viewHistory.map(v => new Date(v.time));
-  const data = viewHistory.map(v => v.views);
-  chart.data.labels = labels;
-  chart.data.datasets[0].data = data;
-  chart.update();
+  const labels = viewHistory.map(e => {
+    const d = new Date(e.timestamp);
+    return `${d.getHours()}:${d.getMinutes().toString().padStart(2, "0")}`;
+  });
+  const data = viewHistory.map(e => e.viewCount);
+
+  if (chart) {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = data;
+    chart.update();
+  } else {
+    const ctx = document.getElementById("viewChart").getContext("2d");
+    chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Live Views",
+          data,
+          fill: false,
+          borderColor: "blue",
+          tension: 0.2
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { title: { display: true, text: "Time" }},
+          y: { title: { display: true, text: "Views" }}
+        }
+      }
+    });
+  }
 }

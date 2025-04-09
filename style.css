@@ -1,0 +1,16 @@
+body {
+  font-family: Arial;
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+}
+input {
+  margin: 5px;
+  padding: 5px;
+}
+button {
+  padding: 10px 20px;
+  margin: 10px 0;
+}

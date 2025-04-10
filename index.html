@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>YouTube Live View Tracker</title>
+  <title>YouTube View Forecast</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -30,6 +30,7 @@
       <p>Views Required in next 5 min: <span id="requiredIn5">-</span></p>
       <p>Projected Views: <span id="projected">-</span></p>
       <p>Forecast: <span id="forecast">Calculating...</span></p>
+      <p>Time Left: <span id="stopwatch">--:--</span></p>
     </div>
 
     <canvas id="viewChart" height="100"></canvas>
@@ -38,3 +39,4 @@
   <script src="script.js"></script>
 </body>
 </html>
+

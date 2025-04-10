@@ -1,40 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>YouTube Live View Tracker</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <title>YouTube Live View Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="container">
-    <h1>YouTube Live View Tracker</h1>
-    <input type="text" id="videoId" placeholder="Video ID" />
-    <input type="number" id="targetViews" placeholder="Target Views" />
-    <input type="number" id="targetTime" placeholder="Target Time (minutes from now)" />
-    <button onclick="startTracking()">Start Tracking</button>
+    <div class="container">
+        <h1>YouTube Live View Tracker</h1>
+        <label>Video ID:<input type="text" id="videoId" value="KQF1gI7nLaU"></label>
+        <label>Target Views:<input type="number" id="targetViews" value="17800000"></label>
+        <label>Target Time (minutes from now):<input type="number" id="targetTime" value="15"></label>
+        <button onclick="startTracking()">Start Tracking</button>
 
-    <div class="stats">
-      <h2>Live Stats</h2>
-      <p>Live View Count: <span id="liveViews">-</span></p>
-      <p>Last 5 min Views: <span id="last5Min">-</span></p>
-      <p>Last 15 min Views: <span id="last15Min">-</span></p>
-      <p>Last 20 min Views: <span id="last20Min">-</span></p>
-      <p>Last 25 min Views: <span id="last25Min">-</span></p>
-      <p>Last 30 min Views: <span id="last30Min">-</span></p>
-      <p>Avg Views/Min (Last 15 min): <span id="avg15Min">-</span></p>
-      <p>Views/min Required: <span id="requiredRate">-</span></p>
-      <p>Views Required in next 5 min: <span id="requiredNext5">-</span></p>
-      <p>Projected Views: <span id="projectedViews">-</span></p>
-      <p>Forecast: <span id="forecast">Calculating...</span></p>
-      <p>Time Left: <span id="timeLeft">-</span></p>
-      <p>Views Left to Meet Target: <span id="viewsLeft" class="neutral">-</span></p>
+        <div class="stats" id="stats">
+            <h2>Live Stats</h2>
+            <div id="loadingSpinner" class="spinner"></div>
+            <p>Live View Count: <span id="liveViews">-</span></p>
+            <p>Last 5 min Views: <span id="views5">-</span></p>
+            <p>Last 15 min Views: <span id="views15">Collecting data...</span></p>
+            <p>Last 20 min Views: <span id="views20">Collecting data...</span></p>
+            <p>Last 25 min Views: <span id="views25">Collecting data...</span></p>
+            <p>Last 30 min Views: <span id="views30">Collecting data...</span></p>
+            <p>Avg Views/Min (Last 15 min): <span id="avgViews15">-</span></p>
+            <p>Views/min Required: <span id="viewsPerMin">-</span></p>
+            <p>Views Required in next 5 min: <span id="viewsRequired5">-</span></p>
+            <p>Projected Views: <span id="projectedViews">-</span></p>
+            <p>Forecast: <span id="forecast">-</span></p>
+            <p>Time Left: <span id="timeLeft">-</span></p>
+            <p>Views Left to Meet Target: <span id="viewsLeft" class="views-left">-</span></p>
+        </div>
+
+        <canvas id="viewChart" width="600" height="300"></canvas>
     </div>
-
-    <canvas id="viewChart" width="400" height="200"></canvas>
-  </div>
-
-  <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

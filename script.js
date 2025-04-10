@@ -22,7 +22,7 @@ function startTracking() {
   }
 
   updateStats();
-  interval = setInterval(updateStats, 60000); // every 1 minute
+  interval = setInterval(updateStats, 60000); // 1 minute interval
 }
 
 function initChart() {
@@ -64,26 +64,43 @@ function updateStats() {
       chartData.push(viewCount);
       chart.update();
 
-      // View calculation
-      const recentViews = chartData.length >= 6 ? viewCount - chartData[chartData.length - 6] : 0;
-      const viewsPerMin = recentViews / 5;
+      const last5 = chartData.length >= 6 ? viewCount - chartData[chartData.length - 6] : 0;
+      const viewsPerMin = last5 / 5;
       const requiredRate = (targetViews - viewCount) / timeLeft;
       const requiredNext5 = requiredRate * 5;
       const projectedViews = Math.floor(viewCount + (viewsPerMin * timeLeft));
       const forecast = projectedViews >= targetViews ? "Yes" : "No";
       const viewsLeft = Math.max(0, targetViews - viewCount);
 
+      function getViewsDiff(minutes) {
+        const index = chartData.length - minutes;
+        if (index >= 0) {
+          return viewCount - chartData[index];
+        }
+        return 0;
+      }
+
+      const last15 = getViewsDiff(15);
+      const last20 = getViewsDiff(20);
+      const last25 = getViewsDiff(25);
+      const last30 = getViewsDiff(30);
+      const avg15 = last15 / 15;
+
       document.getElementById("liveViews").innerText = viewCount.toLocaleString();
-      document.getElementById("last5Min").innerText = recentViews.toLocaleString();
+      document.getElementById("last5Min").innerText = last5.toLocaleString();
+      document.getElementById("last15Min").innerText = last15.toLocaleString();
+      document.getElementById("last20Min").innerText = last20.toLocaleString();
+      document.getElementById("last25Min").innerText = last25.toLocaleString();
+      document.getElementById("last30Min").innerText = last30.toLocaleString();
+      document.getElementById("avg15Min").innerText = avg15.toFixed(2);
       document.getElementById("requiredRate").innerText = requiredRate.toFixed(2);
       document.getElementById("requiredNext5").innerText = Math.round(requiredNext5).toLocaleString();
       document.getElementById("projectedViews").innerText = projectedViews.toLocaleString();
       document.getElementById("forecast").innerText = forecast;
       document.getElementById("timeLeft").innerText = `${timeLeft}:${(60 - currentTime.getSeconds()).toString().padStart(2, "0")}`;
+
       const viewsLeftEl = document.getElementById("viewsLeft");
       viewsLeftEl.innerText = viewsLeft.toLocaleString();
-
-      // Apply color
       viewsLeftEl.classList.remove("green", "red", "neutral");
       viewsLeftEl.classList.add(forecast === "Yes" ? "green" : "red");
     })

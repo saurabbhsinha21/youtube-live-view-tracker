@@ -1,110 +1,110 @@
-const API_KEY = 'AIzaSyCo5NvQZpziJdaCsOjf1H2Rq-1YeiU9Uq8';
-let intervalId, chart, history = [];
+let chart;
+let chartData = [];
+let chartLabels = [];
+let tracking = false;
+let interval;
+let startTime;
+let targetMinutes = 0;
+let videoId = "";
+let targetViews = 0;
+let apiKey = "AIzaSyCo5NvQZpziJdaCsOjf1H2Rq-1YeiU9Uq8";
 
 function startTracking() {
-  clearInterval(intervalId);
-  history = [];
-
-  const videoId = document.getElementById('videoId').value;
-  const targetViews = parseInt(document.getElementById('targetViews').value);
-  const targetTimeMins = parseInt(document.getElementById('targetTime').value);
-  const statsDiv = document.getElementById('stats');
-
-  const endTime = new Date(new Date().getTime() + targetTimeMins * 60000);
-  const loading = document.getElementById('loading');
-  loading.style.display = 'block';
-  statsDiv.innerHTML = '';
+  clearInterval(interval);
+  tracking = true;
+  videoId = document.getElementById("videoId").value;
+  targetViews = parseInt(document.getElementById("targetViews").value);
+  targetMinutes = parseInt(document.getElementById("targetTime").value);
+  startTime = new Date();
 
   if (!chart) {
-    const ctx = document.getElementById('viewChart').getContext('2d');
-    chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Live Views',
-          data: [],
-          borderColor: 'blue',
-          backgroundColor: 'blue',
-          fill: false,
-          pointRadius: 4,
-          tension: 0.3
-        }]
-      },
-      options: {
-        scales: {
-          x: { display: true },
-          y: {
-            beginAtZero: false,
-            ticks: {
-              callback: value => value.toLocaleString()
-            }
-          }
-        }
-      }
-    });
-  } else {
-    chart.data.labels = [];
-    chart.data.datasets[0].data = [];
-    chart.update();
+    initChart();
   }
 
-  const update = async () => {
-    const now = new Date();
-    const minsLeft = Math.max(0, Math.round((endTime - now) / 60000));
-    const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${API_KEY}`);
-    const data = await response.json();
-    const liveViews = parseInt(data.items[0].statistics.viewCount);
+  updateStats();
+  interval = setInterval(updateStats, 60000); // 1 minute interval
+}
 
-    const timestamp = now.toLocaleTimeString();
-    history.push({ time: now, views: liveViews });
-    chart.data.labels.push(timestamp);
-    chart.data.datasets[0].data.push(liveViews);
-    chart.update();
+function initChart() {
+  const ctx = document.getElementById("viewChart").getContext("2d");
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: chartLabels,
+      datasets: [{
+        label: "Live Views",
+        data: chartData,
+        fill: false,
+        borderColor: "blue",
+        backgroundColor: "blue",
+        tension: 0.3,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: false
+        }
+      }
+    }
+  });
+}
 
-    // Get view deltas
-    const getViewsInLast = mins => {
-      const from = new Date(now - mins * 60000);
-      const filtered = history.filter(h => h.time >= from);
-      if (filtered.length < 2) return '-';
-      return filtered[filtered.length - 1].views - filtered[0].views;
-    };
+function updateStats() {
+  fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${apiKey}`)
+    .then(res => res.json())
+    .then(data => {
+      const viewCount = parseInt(data.items[0].statistics.viewCount);
+      const currentTime = new Date();
+      const minutesPassed = Math.floor((currentTime - startTime) / 60000);
+      const timeLeft = Math.max(0, targetMinutes - minutesPassed);
 
-    const last5 = getViewsInLast(5);
-    const last15 = getViewsInLast(15);
-    const last20 = getViewsInLast(20);
-    const last25 = getViewsInLast(25);
-    const last30 = getViewsInLast(30);
-    const avg15 = last15 !== '-' ? (last15 / 15).toFixed(2) : '-';
+      chartLabels.push(currentTime.toLocaleTimeString());
+      chartData.push(viewCount);
+      chart.update();
 
-    const viewsLeft = targetViews - liveViews;
-    const requiredPerMin = (viewsLeft / Math.max(1, (endTime - now) / 60000)).toFixed(2);
-    const projectedViews = last15 !== '-' ? Math.round(liveViews + (avg15 * minsLeft)) : liveViews;
-    const forecast = projectedViews >= targetViews ? 'Yes' : 'No';
-    const colorClass = forecast === 'Yes' ? 'green' : 'red';
+      const last5 = chartData.length >= 6 ? viewCount - chartData[chartData.length - 6] : 0;
+      const viewsPerMin = last5 / 5;
+      const requiredRate = (targetViews - viewCount) / timeLeft;
+      const requiredNext5 = requiredRate * 5;
+      const projectedViews = Math.floor(viewCount + (viewsPerMin * timeLeft));
+      const forecast = projectedViews >= targetViews ? "Yes" : "No";
+      const viewsLeft = Math.max(0, targetViews - viewCount);
 
-    const viewsToMeet = targetViews - liveViews;
-    const viewsToMeetColor = avg15 !== '-' && avg15 * minsLeft >= viewsToMeet ? 'green' : 'red';
+      function getViewsDiff(minutes) {
+        const index = chartData.length - minutes;
+        if (index >= 0) {
+          return viewCount - chartData[index];
+        }
+        return 0;
+      }
 
-    loading.style.display = 'none';
+      const last15 = getViewsDiff(15);
+      const last20 = getViewsDiff(20);
+      const last25 = getViewsDiff(25);
+      const last30 = getViewsDiff(30);
+      const avg15 = last15 / 15;
 
-    statsDiv.innerHTML = `
-      Live View Count: ${liveViews.toLocaleString()}<br>
-      Last 5 min Views: ${last5 === '-' ? 'Collecting data...' : last5.toLocaleString()}<br>
-      Last 15 min Views: ${last15 === '-' ? 'Collecting data...' : last15.toLocaleString()}<br>
-      Last 20 min Views: ${last20 === '-' ? 'Collecting data...' : last20.toLocaleString()}<br>
-      Last 25 min Views: ${last25 === '-' ? 'Collecting data...' : last25.toLocaleString()}<br>
-      Last 30 min Views: ${last30 === '-' ? 'Collecting data...' : last30.toLocaleString()}<br>
-      Avg Views/Min (Last 15 min): ${avg15}<br>
-      Views/min Required: ${requiredPerMin}<br>
-      Views Required in next 5 min: ${Math.ceil(requiredPerMin * 5).toLocaleString()}<br>
-      Projected Views: ${projectedViews.toLocaleString()}<br>
-      Forecast: ${forecast}<br>
-      Time Left: ${minsLeft}:${String(59 - now.getSeconds()).padStart(2, '0')}<br>
-      Views Left to Meet Target: <span class="${viewsToMeetColor}">${viewsToMeet.toLocaleString()}</span>
-    `;
-  };
+      document.getElementById("liveViews").innerText = viewCount.toLocaleString();
+      document.getElementById("last5Min").innerText = last5.toLocaleString();
+      document.getElementById("last15Min").innerText = last15.toLocaleString();
+      document.getElementById("last20Min").innerText = last20.toLocaleString();
+      document.getElementById("last25Min").innerText = last25.toLocaleString();
+      document.getElementById("last30Min").innerText = last30.toLocaleString();
+      document.getElementById("avg15Min").innerText = avg15.toFixed(2);
+      document.getElementById("requiredRate").innerText = requiredRate.toFixed(2);
+      document.getElementById("requiredNext5").innerText = Math.round(requiredNext5).toLocaleString();
+      document.getElementById("projectedViews").innerText = projectedViews.toLocaleString();
+      document.getElementById("forecast").innerText = forecast;
+      document.getElementById("timeLeft").innerText = `${timeLeft}:${(60 - currentTime.getSeconds()).toString().padStart(2, "0")}`;
 
-  update();
-  intervalId = setInterval(update, 60000);
+      const viewsLeftEl = document.getElementById("viewsLeft");
+      viewsLeftEl.innerText = viewsLeft.toLocaleString();
+      viewsLeftEl.classList.remove("green", "red", "neutral");
+      viewsLeftEl.classList.add(forecast === "Yes" ? "green" : "red");
+    })
+    .catch(error => {
+      console.error("Error fetching YouTube data:", error);
+    });
 }

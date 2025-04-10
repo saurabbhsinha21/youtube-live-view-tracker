@@ -1,142 +1,93 @@
-const apiKey = "AIzaSyCo5NvQZpziJdaCsOjf1H2Rq-1YeiU9Uq8";
-
-let viewHistory = [];
 let chart;
+let chartData = [];
+let chartLabels = [];
+let tracking = false;
 let interval;
-let stopwatchInterval;
-let startTime, targetTime, targetViews;
+let startTime;
+let targetMinutes = 0;
+let videoId = "";
+let targetViews = 0;
+let apiKey = "AIzaSyCo5NvQZpziJdaCsOjf1H2Rq-1YeiU9Uq8";
 
 function startTracking() {
-  const videoId = document.getElementById("videoId").value;
+  clearInterval(interval);
+  tracking = true;
+  videoId = document.getElementById("videoId").value;
   targetViews = parseInt(document.getElementById("targetViews").value);
-  const time = parseInt(document.getElementById("targetTime").value);
-  targetTime = Date.now() + time * 60000;
+  targetMinutes = parseInt(document.getElementById("targetTime").value);
+  startTime = new Date();
 
-  const now = Date.now();
-
-  // If already tracking, update target without resetting data
-  if (interval && viewHistory.length > 0) {
-    const latest = viewHistory[viewHistory.length - 1];
-    updateStats(latest.viewCount);
-    return;
+  if (!chart) {
+    initChart();
   }
 
-  // New tracking session
-  viewHistory = [];
-  startTime = now;
-
-  if (interval) clearInterval(interval);
-  if (stopwatchInterval) clearInterval(stopwatchInterval);
-
-  fetchAndUpdate(videoId);
-  interval = setInterval(() => fetchAndUpdate(videoId), 60000);
-  updateStopwatch();
-  stopwatchInterval = setInterval(updateStopwatch, 1000);
+  updateStats();
+  interval = setInterval(updateStats, 60000); // every 1 minute
 }
 
-async function fetchAndUpdate(videoId) {
-  try {
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${apiKey}`);
-    const data = await res.json();
-    const viewCount = parseInt(data.items[0].statistics.viewCount);
-    const timestamp = Date.now();
-
-    viewHistory.push({ timestamp, viewCount });
-    updateStats(viewCount);
-    updateChart();
-  } catch (e) {
-    console.error("API error:", e);
-  }
-}
-
-function updateStats(currentViews) {
-  document.getElementById("liveViews").textContent = currentViews;
-
-  const now = Date.now();
-  const len = viewHistory.length;
-
-  let last1min = 0, last5min = 0;
-  for (let i = len - 1; i >= 0; i--) {
-    const delta = now - viewHistory[i].timestamp;
-    const diff = currentViews - viewHistory[i].viewCount;
-    if (delta <= 60000) last1min = diff;
-    if (delta <= 300000) last5min = diff;
-  }
-
-  const minutesLeft = (targetTime - now) / 60000;
-  const requiredPerMin = (targetViews - currentViews) / minutesLeft;
-  const requiredIn5min = Math.ceil(requiredPerMin * 5);
-
-  // Weighted exponential view rate
-  let totalWeight = 0;
-  let weightedSum = 0;
-  for (let i = 1; i < viewHistory.length; i++) {
-    const dt = (viewHistory[i].timestamp - viewHistory[i - 1].timestamp) / 60000;
-    const dv = viewHistory[i].viewCount - viewHistory[i - 1].viewCount;
-    const weight = i;
-    weightedSum += (dv / dt) * weight;
-    totalWeight += weight;
-  }
-
-  const weightedRate = totalWeight > 0 ? weightedSum / totalWeight : 0;
-  const projected = Math.round(currentViews + weightedRate * minutesLeft);
-  const forecast = projected >= targetViews ? "Yes" : "No";
-
-  document.getElementById("last1min").textContent = last1min;
-  document.getElementById("last5min").textContent = last5min;
-  document.getElementById("requiredRate").textContent = requiredPerMin.toFixed(2);
-  document.getElementById("requiredIn5").textContent = requiredIn5min;
-  document.getElementById("projected").textContent = projected;
-  document.getElementById("forecast").textContent = forecast;
-}
-
-function updateStopwatch() {
-  const now = Date.now();
-  const diff = targetTime - now;
-
-  if (diff <= 0) {
-    document.getElementById("stopwatch").textContent = "00:00";
-    clearInterval(stopwatchInterval);
-    return;
-  }
-
-  const mins = Math.floor(diff / 60000).toString().padStart(2, '0');
-  const secs = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-  document.getElementById("stopwatch").textContent = `${mins}:${secs}`;
-}
-
-function updateChart() {
-  const labels = viewHistory.map(e => {
-    const d = new Date(e.timestamp);
-    return `${d.getHours()}:${d.getMinutes().toString().padStart(2, "0")}`;
-  });
-  const data = viewHistory.map(e => e.viewCount);
-
-  if (chart) {
-    chart.data.labels = labels;
-    chart.data.datasets[0].data = data;
-    chart.update();
-  } else {
-    const ctx = document.getElementById("viewChart").getContext("2d");
-    chart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels,
-        datasets: [{
-          label: "Live Views",
-          data,
-          fill: false,
-          borderColor: "blue",
-          tension: 0.2
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: { title: { display: true, text: "Time" }},
-          y: { title: { display: true, text: "Views" }}
+function initChart() {
+  const ctx = document.getElementById("viewChart").getContext("2d");
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: chartLabels,
+      datasets: [{
+        label: "Live Views",
+        data: chartData,
+        fill: false,
+        borderColor: "blue",
+        backgroundColor: "blue",
+        tension: 0.3,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: false
         }
       }
+    }
+  });
+}
+
+function updateStats() {
+  fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}&key=${apiKey}`)
+    .then(res => res.json())
+    .then(data => {
+      const viewCount = parseInt(data.items[0].statistics.viewCount);
+      const currentTime = new Date();
+      const minutesPassed = Math.floor((currentTime - startTime) / 60000);
+      const timeLeft = Math.max(0, targetMinutes - minutesPassed);
+
+      chartLabels.push(currentTime.toLocaleTimeString());
+      chartData.push(viewCount);
+      chart.update();
+
+      // View calculation
+      const recentViews = chartData.length >= 6 ? viewCount - chartData[chartData.length - 6] : 0;
+      const viewsPerMin = recentViews / 5;
+      const requiredRate = (targetViews - viewCount) / timeLeft;
+      const requiredNext5 = requiredRate * 5;
+      const projectedViews = Math.floor(viewCount + (viewsPerMin * timeLeft));
+      const forecast = projectedViews >= targetViews ? "Yes" : "No";
+      const viewsLeft = Math.max(0, targetViews - viewCount);
+
+      document.getElementById("liveViews").innerText = viewCount.toLocaleString();
+      document.getElementById("last5Min").innerText = recentViews.toLocaleString();
+      document.getElementById("requiredRate").innerText = requiredRate.toFixed(2);
+      document.getElementById("requiredNext5").innerText = Math.round(requiredNext5).toLocaleString();
+      document.getElementById("projectedViews").innerText = projectedViews.toLocaleString();
+      document.getElementById("forecast").innerText = forecast;
+      document.getElementById("timeLeft").innerText = `${timeLeft}:${(60 - currentTime.getSeconds()).toString().padStart(2, "0")}`;
+      const viewsLeftEl = document.getElementById("viewsLeft");
+      viewsLeftEl.innerText = viewsLeft.toLocaleString();
+
+      // Apply color
+      viewsLeftEl.classList.remove("green", "red", "neutral");
+      viewsLeftEl.classList.add(forecast === "Yes" ? "green" : "red");
+    })
+    .catch(error => {
+      console.error("Error fetching YouTube data:", error);
     });
-  }
 }

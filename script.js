@@ -3,6 +3,7 @@ const apiKey = "AIzaSyCo5NvQZpziJdaCsOjf1H2Rq-1YeiU9Uq8";
 let viewHistory = [];
 let chart;
 let interval;
+let stopwatchInterval;
 let startTime, targetTime, targetViews;
 
 function startTracking() {
@@ -10,12 +11,27 @@ function startTracking() {
   targetViews = parseInt(document.getElementById("targetViews").value);
   const time = parseInt(document.getElementById("targetTime").value);
   targetTime = Date.now() + time * 60000;
-  startTime = Date.now();
+
+  const now = Date.now();
+
+  // If already tracking, update target without resetting data
+  if (interval && viewHistory.length > 0) {
+    const latest = viewHistory[viewHistory.length - 1];
+    updateStats(latest.viewCount);
+    return;
+  }
+
+  // New tracking session
   viewHistory = [];
+  startTime = now;
 
   if (interval) clearInterval(interval);
+  if (stopwatchInterval) clearInterval(stopwatchInterval);
+
   fetchAndUpdate(videoId);
-  interval = setInterval(() => fetchAndUpdate(videoId), 60000); // every minute
+  interval = setInterval(() => fetchAndUpdate(videoId), 60000);
+  updateStopwatch();
+  stopwatchInterval = setInterval(updateStopwatch, 1000);
 }
 
 async function fetchAndUpdate(videoId) {
@@ -26,7 +42,6 @@ async function fetchAndUpdate(videoId) {
     const timestamp = Date.now();
 
     viewHistory.push({ timestamp, viewCount });
-
     updateStats(viewCount);
     updateChart();
   } catch (e) {
@@ -37,12 +52,10 @@ async function fetchAndUpdate(videoId) {
 function updateStats(currentViews) {
   document.getElementById("liveViews").textContent = currentViews;
 
-  const len = viewHistory.length;
   const now = Date.now();
+  const len = viewHistory.length;
 
-  let last1min = 0;
-  let last5min = 0;
-
+  let last1min = 0, last5min = 0;
   for (let i = len - 1; i >= 0; i--) {
     const delta = now - viewHistory[i].timestamp;
     const diff = currentViews - viewHistory[i].viewCount;
@@ -53,18 +66,43 @@ function updateStats(currentViews) {
   const minutesLeft = (targetTime - now) / 60000;
   const requiredPerMin = (targetViews - currentViews) / minutesLeft;
   const requiredIn5min = Math.ceil(requiredPerMin * 5);
-  const elapsedMin = (now - startTime) / 60000;
-  const avgRate = (currentViews - viewHistory[0].viewCount) / elapsedMin;
-  const projected = Math.round(currentViews + avgRate * minutesLeft);
+
+  // Weighted exponential view rate
+  let totalWeight = 0;
+  let weightedSum = 0;
+  for (let i = 1; i < viewHistory.length; i++) {
+    const dt = (viewHistory[i].timestamp - viewHistory[i - 1].timestamp) / 60000;
+    const dv = viewHistory[i].viewCount - viewHistory[i - 1].viewCount;
+    const weight = i;
+    weightedSum += (dv / dt) * weight;
+    totalWeight += weight;
+  }
+
+  const weightedRate = totalWeight > 0 ? weightedSum / totalWeight : 0;
+  const projected = Math.round(currentViews + weightedRate * minutesLeft);
+  const forecast = projected >= targetViews ? "Yes" : "No";
 
   document.getElementById("last1min").textContent = last1min;
   document.getElementById("last5min").textContent = last5min;
   document.getElementById("requiredRate").textContent = requiredPerMin.toFixed(2);
   document.getElementById("requiredIn5").textContent = requiredIn5min;
   document.getElementById("projected").textContent = projected;
-
-  const forecast = projected >= targetViews ? "Yes" : "No";
   document.getElementById("forecast").textContent = forecast;
+}
+
+function updateStopwatch() {
+  const now = Date.now();
+  const diff = targetTime - now;
+
+  if (diff <= 0) {
+    document.getElementById("stopwatch").textContent = "00:00";
+    clearInterval(stopwatchInterval);
+    return;
+  }
+
+  const mins = Math.floor(diff / 60000).toString().padStart(2, '0');
+  const secs = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+  document.getElementById("stopwatch").textContent = `${mins}:${secs}`;
 }
 
 function updateChart() {
